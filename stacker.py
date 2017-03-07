@@ -1,9 +1,10 @@
 import readline
 import shlex
 import robotarm
+import historyitem
 
 from robotarm import Robot
-
+from historyitem import HistoryItem
 
 print('Welcome to the robot mover. Type exit to quit`.')
 
@@ -30,10 +31,8 @@ while True:
             size=args[0]
             currentSize = len(robot.slots)
             returnedItems = robot.setSize(int(size))
-            print returnedItems
-            
-            inverse.append('restoreSize {}'.format(returnedItems))
-            history.append('setSize {}'.format(size))
+            newHistory = HistoryItem('setSize',size,'restoreSize',returnedItems)
+            history.append(newHistory)
             robot.printStack()
         else:
             print('you must provide a single argument to set the number of slots.')
@@ -42,8 +41,8 @@ while True:
         if len(args)==1:
             dest = int(args[0])
             robot.addBlock(dest)
-            inverse.append('removeBlock {}'.format(dest))
-            history.append('addBlock {}'.format(dest))
+            newHistory = HistoryItem('addBlock',dest,'removeBlock',dest)
+            history.append(newHistory)
             robot.printStack()
         else:
             print('add command requires one argument.')
@@ -54,7 +53,8 @@ while True:
             src = int(src)
             dest = int(dest)
             robot.moveBlock(src,dest)
-            history.append('addBlock {}'.format(src, dest))
+            newHistory = HistoryItem('moveBlock', [src,dest], 'moveBlock', [dest,src])
+            history.append(newHistory)
             robot.printStack()
         else:
             print('mv command requires two arguments.')
@@ -63,6 +63,9 @@ while True:
         if len(args)==1:
             dest = args[0]
             robot.removeBlock(int(dest))
+            newHistory = HistoryItem('removeBlock', dest, 'addBlock', dest)
+            history.append(newHistory)
+            robot.printStack()
         else:
             print('remove command requires one argument.')  
 
@@ -79,16 +82,19 @@ while True:
 
                 for x in range(start,histLength):
                     print history[x]
-                    tokens = shlex.split(history[x])
-                    func = getattr(Robot, tokens[0])
+                    historyItem = history[x]
+                    func = getattr(Robot, historyItem.command)
 
-                    #ugly checking of number of tokens but we know there should only be one or two..
-                    #with more time this needs to be less "hard-coded" and the casting should be removed
-                    #a better solution would have been to store objects instead of text values...
-                    if len(tokens)==2:
-                        func(robot,int(tokens[1]))
-                    elif len(tokens==3):
-                        func(robot,int(tokens[1]),int(tokens[2]))
+                    #i don't feel great about the if check and casting here normally but in this contained program we know we're looking for integers
+                    if isinstance(historyItem.argument, list):
+                        src=int(historyItem.argument[0])
+                        if historyItem.command=='moveBlock':
+                            dest=int(historyItem.argument[1])
+                            func(robot,src,dest)
+                        else:
+                            func(robot,src)
+                    else:
+                        func(robot,int(historyItem.argument))
                 
             robot.printStack()
 
@@ -97,39 +103,42 @@ while True:
 
 #assumption: undo command does not amend the history list with the actions it performs
 #assumption: argument given to undo command signifies 1-n command to execute
+#assumption: when undo'ing a size command, we need to restore the blocks in the slot
 
     elif cmd=='undo':
         if len(args)==1:
             numCommands = int(args[0])
-            inverseLength = len(inverse)-1
+            histLength = len(history)
 
-            if numCommands != 0:
-                start = inverseLength - numCommands
+            if numCommands != 0 and numCommands <= histLength:
+                start = histLength - numCommands
 
-                for x in range(inverseLength, start, -1):
-                    print inverse[x]
-                    tokens = shlex.split(inverse[x])
-                    func = getattr(Robot, tokens[0])
+                for x in range(start,histLength):
+                    historyItem = history[x]
+                    func = getattr(Robot, historyItem.inverseCommand)
 
-                    #even uglier hard-coding to check for restoreSize, casting to int caught up with me already. :)
-                    #definitely need to make this more intuitive, would likely create a more robust state machine
-                    #class for both replay and undo
-
-                    if tokens[0]=='restoreSize':
-                        argument=''
-                        for chars in range(1,len(tokens)):
-                            argument=argument+chars
-                        func(robot,argument)
-                    elif len(tokens)==2:
-                        func(robot,int(tokens[1]))
-                    elif len(tokens==3):
-                        func(robot,int(tokens[1]),int(tokens[2]))
+                    #same here, i wish this was cleaner but we can expect integers and a set of predetermined commands
+                    #a lot of massaging is required to allow for restoring of the blocks into removed slots
+                    if isinstance(historyItem.inverseArgument, list):
+                        src=int(historyItem.inverseArgument[0])
+                        if historyItem.inverseCommand=='moveBlock':
+                            dest=int(historyItem.inverseArgument[1])
+                            func(robot,src,dest)
+                        elif historyItem.inverseCommand=='restoreSize':
+                            print historyItem.inverseArgument
+                            for i in range(0,len(historyItem.inverseArgument)-1):
+                                historyItem.inverseArgument[i] = int(historyItem.inverseArgument[i])
+                            historyItem.inverseArgument.reverse()
+                            func(robot,historyItem.inverseArgument)
+                        else:
+                            func(robot,src)
+                    else:
+                        func(robot,int(historyItem.inverseArgument))
                 
             robot.printStack()
 
-    elif cmd =='history':
-        func = robot.getHistory()
-        print func
+        else:
+            print('replay command requires one argument.')
 
     elif cmd=='print':
         robot.printStack()

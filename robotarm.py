@@ -42,9 +42,9 @@ class Robot:
 
     def moveBlock(self, src, dest):
         if self.checkTarget(dest):
-                retValue = robot.removeBlock(src)
+                retValue = self.removeBlock(src)
                 if retValue == True:
-                    robot.addBlock(dest)
+                    self.addBlock(dest)
     
     def checkTarget(self,target):
         if len(self.slots) < target or target == 0:
