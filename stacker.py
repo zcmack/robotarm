@@ -8,6 +8,9 @@ from historyitem import HistoryItem
 
 print('Welcome to the robot mover. Type exit to quit`.')
 
+#stacker is the main program that interacts with the robot arm as well as history items.
+#a further improvement opportunity would be separating state machine operations to another class entirely
+#leaving this file to be more strictly bound to the command line interaction
 
 robot = Robot()
 history = []
@@ -81,7 +84,6 @@ while True:
                 start = histLength - numCommands
 
                 for x in range(start,histLength):
-                    print history[x]
                     historyItem = history[x]
                     func = getattr(Robot, historyItem.command)
 
@@ -138,7 +140,9 @@ while True:
             robot.printStack()
 
         else:
-            print('replay command requires one argument.')
+            print('undo command requires one argument.')
+
+#convenience command for troubleshooting
 
     elif cmd=='print':
         robot.printStack()

@@ -1,4 +1,7 @@
 
+#robot class contains operations performed by the robot arm. 
+#separating concerns of CLI and the robot moves
+
 class Robot:
     slots = [] 
 
@@ -20,10 +23,7 @@ class Robot:
             
     def restoreSize(self, removedSlots):
         #used by undo method to restore slots removed with blocks present
-        print('robot class {}'.format(removedSlots))
         self.slots.extend(removedSlots)
-        #for i in removedSlots:
-        #    self.slots.append(i[0])
         return True
         
     def addBlock(self, target):
@@ -54,7 +54,6 @@ class Robot:
             return True
  
     def printStack(self):
-        print self.slots
         for x in range (0,len(self.slots)):
             blocks = self.slots[x]
             printedBlocks = ''
