@@ -14,7 +14,7 @@ print('Welcome to the robot mover. Type exit to quit`.')
 
 robot = Robot()
 history = []
-inverse = []
+
 
 #unfortunately python doesn't have a switch statement. an endless while loop works ok for a CLI
 while True:
